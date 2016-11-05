@@ -16,10 +16,10 @@ func main() {
 		err    error
 	)
 	switch {
-	case len(os.Args) == 0:
+	case len(os.Args) == 1:
 		log.Print("loading configuration from environment")
 		config = LoadFromEnv()
-	case len(os.Args) == 1 && os.Args[1] != "--help":
+	case len(os.Args) == 2 && os.Args[1] != "--help":
 		log.Printf("loading configuration from %s", os.Args[1])
 		config, err = LoadFromFile(os.Args[1])
 	default:
