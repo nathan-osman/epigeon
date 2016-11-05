@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/ChimeraCoder/anaconda"
 	"github.com/hectane/go-smtpsrv"
 
 	"errors"
@@ -17,6 +18,7 @@ import (
 type Adapter struct {
 	config *Config
 	server *smtpsrv.Server
+	api    *anaconda.TwitterApi
 }
 
 // getBody recursively searches for text content, decodes, and returns it.
@@ -56,10 +58,20 @@ func (a *Adapter) getBody(header mail.Header, r io.Reader) (string, error) {
 	return "", errors.New("no valid text stream found")
 }
 
+// tweetBody sends a tweet with the specified body.
+func (a *Adapter) tweetBody(body string) error {
+	if len(body) > 140 {
+		body = body[:139] + "…"
+	}
+	_, err := a.api.PostTweet(body, nil)
+	return err
+}
+
 // run receives emails and tweets them. This is far more difficult than it
 // sounds since the email must be decoded (headers removed, etc.).
 func (a *Adapter) run() {
 	for m := range a.server.NewMessage {
+		log.Printf("message received from %s", m.From)
 		r := strings.NewReader(m.Body)
 		m, err := mail.ReadMessage(r)
 		if err != nil {
@@ -71,7 +83,10 @@ func (a *Adapter) run() {
 			log.Print(err)
 			continue
 		}
-		// TODO: tweet an abbreviated form of the body
+		if err := a.tweetBody(b); err != nil {
+			log.Print(err)
+		}
+		log.Print("tweet sent")
 	}
 }
 
@@ -87,6 +102,7 @@ func NewAdapter(config *Config) (*Adapter, error) {
 	a := &Adapter{
 		config: config,
 		server: s,
+		api:    anaconda.NewTwitterApi(config.TwitterAccessToken, config.TwitterAccessSecret),
 	}
 	go a.run()
 	return a, nil
